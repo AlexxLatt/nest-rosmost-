@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { BasketEntity } from './basket.entity';
 import { ProductsEntity } from '@app/products/products.entity';
 import { UserEntity } from '@app/user/user.entity';
+import { UserProductEntity } from '@app/userProduct/userProduct.entity';
 
 @Injectable()
 export class BasketService {
@@ -19,6 +20,8 @@ export class BasketService {
     private userRepository: Repository<UserEntity>,
     @InjectRepository(ProductsEntity)
     private productsRepository: Repository<ProductsEntity>,
+    @InjectRepository(UserProductEntity)
+    private userProductRepositry: Repository<UserProductEntity>,
   ) {}
 
   async createBasketForUser(userId: number): Promise<BasketEntity> {
@@ -69,6 +72,8 @@ export class BasketService {
     return await this.basketRepository.save(basket);
   }
 
+  // basket.service.ts
+
   async purchaseBasket(userId: number): Promise<BasketEntity> {
     const user = await this.userRepository.findOne(userId, {
       relations: ['basket', 'basket.products'],
@@ -79,19 +84,23 @@ export class BasketService {
 
     const basket = user.basket;
 
-    // Обновляем каждый продукт в корзине
+    // Создаем записи в UserProductEntity для каждого продукта
+    for (const product of basket.products) {
+      const userProduct = new UserProductEntity();
+      userProduct.user = user;
+      userProduct.product = product;
+      userProduct.isPurchased = true;
+      await this.userProductRepositry.save(userProduct);
+    }
+
+    // Обновляем статус продуктов в корзине
     basket.products.forEach((product) => {
-      product.isInBasket = false; // Устанавливаем isInBasket в false
-      product.isPurchased = true; // Устанавливаем isPurchased в true
+      product.isInBasket = false;
+      product.isPurchased = true;
     });
 
-    // Сохраняем обновленные продукты
+    // Сохраняем обновленные продукты и корзину
     await this.productsRepository.save(basket.products);
-
-    // Очищаем корзину
-    basket.products = [];
-
-    // Сохраняем обновленную корзину
     await this.basketRepository.save(basket);
 
     return basket;

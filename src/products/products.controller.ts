@@ -29,7 +29,23 @@ export class ProductsController {
   @Get()
   @UseGuards(AuthGuard)
   async findAll(@User('id') idUser: number): Promise<ProductsEntity[]> {
-    return this.productsService.findAllProductsForUser(idUser);
+    return this.productsService.findAllProductsInBasket(idUser);
+  }
+
+  @Get('purchased')
+  @UseGuards(AuthGuard)
+  async findAllPurchased(
+    @User('id') idUser: number,
+  ): Promise<ProductsEntity[]> {
+    return this.productsService.findAllPurchasedProducts(idUser);
+  }
+
+  @Get('status')
+  @UseGuards(AuthGuard)
+  async findAllWithStatus(
+    @User('id') idUser: number,
+  ): Promise<ProductsEntity[]> {
+    return this.productsService.findAllProducts(idUser);
   }
 
   @Get(':id')
@@ -38,7 +54,7 @@ export class ProductsController {
     return this.productsService.findOneProduct(id);
   }
 
-  @Put(':id') // Используем метод PUT для обновления
+  @Put(':id')
   @UseGuards(AuthGuard)
   async update(
     @Param('id') id: number,

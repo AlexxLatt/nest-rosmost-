@@ -12,6 +12,7 @@ import {
 import { ReviewsEntity } from '@app/reviews/reviews.entity';
 import { UserEntity } from '@app/user/user.entity';
 import { BasketEntity } from '@app/basket/basket.entity';
+import { UserProductEntity } from '@app/userProduct/userProduct.entity';
 @Entity({ name: 'products' })
 export class ProductsEntity {
   @PrimaryGeneratedColumn()
@@ -46,7 +47,8 @@ export class ProductsEntity {
 
   @Column({ default: false }) // По умолчанию продукт не куплен
   isPurchased: boolean;
-
+  @OneToMany(() => UserProductEntity, (userProduct) => userProduct.product)
+  userProducts: UserProductEntity[];
   @Column({ nullable: true }) // Добавляем поле для хранения basketId
   basketId: number;
   ProductsEntity: any;

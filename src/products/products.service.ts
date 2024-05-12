@@ -4,13 +4,22 @@ import { Repository } from 'typeorm';
 import { ProductsEntity } from './products.entity';
 import { CreateProductsDto } from './dto/createProducts.dto';
 import { BasketService } from '@app/basket/basket.service';
+import { UserEntity } from '@app/user/user.entity';
+import { UserProductEntity } from '@app/userProduct/userProduct.entity';
+import { BasketEntity } from '@app/basket/basket.entity';
 
 @Injectable()
 export class ProductsService {
   constructor(
+    @InjectRepository(BasketEntity)
+    private basketRepository: Repository<BasketEntity>,
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
     @InjectRepository(ProductsEntity)
     private productsRepository: Repository<ProductsEntity>,
-    private basketService: BasketService, // Внедряем BasketService
+    @InjectRepository(UserProductEntity) // Инжектируем репозиторий UserProductEntity
+    private userProductRepository: Repository<UserProductEntity>,
+    private basketService: BasketService,
   ) {}
 
   async createProduct(
@@ -20,19 +29,40 @@ export class ProductsService {
     return await this.productsRepository.save(product);
   }
 
-  async findAllProductsForUser(userId: number): Promise<ProductsEntity[]> {
-    // Создаем или получаем корзину для пользователя
-    const basket = await this.basketService.createBasketForUser(userId);
+  async findAllProductsInBasket(userId: number): Promise<ProductsEntity[]> {
+    const user = await this.userRepository.findOne(userId, {
+      relations: ['basket', 'basket.products'],
+    });
+    if (!user || !user.basket) {
+      throw new NotFoundException('Basket not found');
+    }
 
-    // Получаем все продукты из базы данных с отношениями к отзывам
+    return user.basket.products;
+  }
+
+  async findAllPurchasedProducts(userId: number): Promise<ProductsEntity[]> {
+    const user = await this.userRepository.findOne(userId, {
+      relations: ['basket', 'basket.products'],
+    });
+    if (!user || !user.basket) {
+      throw new NotFoundException('Basket not found');
+    }
+
+    // Возвращаем только купленные продукты
+    return user.basket.products.filter((product) => product.isPurchased);
+  }
+
+  async findAllProducts(userId: number): Promise<ProductsEntity[]> {
     const products = await this.productsRepository.find({
       relations: ['reviews'],
     });
 
+    // Получаем корзину пользователя
+    const basket = await this.basketService.createBasketForUser(userId);
+
+    // Помечаем каждый продукт в соответствии с его статусом (куплен, в корзине или нет)
     products.forEach((product) => {
       const isInBasket = basket.products.some((p) => p.id === product.id);
-      product.isInBasket = isInBasket;
-
       if (!product.isPurchased) {
         const purchasedProduct = basket.products.find(
           (p) => p.id === product.id,
@@ -41,10 +71,13 @@ export class ProductsService {
           ? purchasedProduct.isPurchased
           : false;
       }
+      delete product.isInBasket;
+      delete product.isPurchased;
     });
 
     return products;
   }
+
   async findOneProduct(id: number): Promise<ProductsEntity> {
     const product = await this.productsRepository.findOne(id, {
       relations: ['reviews'],

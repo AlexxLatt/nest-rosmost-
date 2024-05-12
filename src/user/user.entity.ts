@@ -13,6 +13,7 @@ import {
 import { BasketEntity } from '@app/basket/basket.entity';
 import { ReviewsEntity } from '@app/reviews/reviews.entity';
 import { ProductsEntity } from '@app/products/products.entity';
+import { UserProductEntity } from '@app/userProduct/userProduct.entity';
 @Entity({ name: 'users' })
 export class UserEntity {
   @PrimaryGeneratedColumn()
@@ -49,7 +50,8 @@ export class UserEntity {
       this.password = await hash(this.password, 10);
     }
   }
-
+  @OneToMany(() => UserProductEntity, (userProduct) => userProduct.user)
+  userProducts: UserProductEntity[];
   @OneToOne(() => BasketEntity, (basket) => basket.user)
   @JoinColumn()
   basket: BasketEntity;
