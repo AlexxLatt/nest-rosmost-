@@ -1,5 +1,6 @@
 import { UserEntity } from '@app/user/user.entity';
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -8,11 +9,13 @@ import {
 import { CreateReviewsDto } from './dto/createReviews.dto';
 import { ReviewsEntity } from './reviews.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DeleteResult, Repository, getRepository } from 'typeorm';
 import { ReviewsResponseInterface } from './types/reviewsResponse.intarface';
 import { ProductsEntity } from '@app/products/products.entity';
 import slugifay from 'slugify';
 import slugify from 'slugify';
+import { Query } from 'typeorm/driver/Query';
+import { ReviewsSResponseInterface } from './types/reviewsSResponse.intarface';
 @Injectable()
 export class ReviewsService {
   constructor(
@@ -72,5 +75,51 @@ export class ReviewsService {
 
     console.log('review', review);
     return await this.reviewsRepository.delete({ slug });
+  }
+  async updateReview(
+    slug: string,
+    currentUserId: number,
+    updateReviewsDto: CreateReviewsDto,
+  ): Promise<ReviewsEntity> {
+    const review = await this.findReview(slug);
+    if (!review) {
+      throw new HttpException('Review does not exist', HttpStatus.NOT_FOUND);
+    }
+    if (review.author.id !== currentUserId) {
+      throw new HttpException('You are not an author', HttpStatus.FORBIDDEN);
+    }
+    const updatedReview = Object.assign(review, updateReviewsDto);
+    return await this.productsRepository.save(updatedReview);
+  }
+  async findAll(
+    currentUserId: number,
+    productId: number,
+    query: any,
+  ): Promise<ReviewsSResponseInterface> {
+    const queryBuilder = getRepository(ReviewsEntity)
+      .createQueryBuilder('reviews')
+      .leftJoinAndSelect('reviews.author', 'author')
+      .where('reviews.product.id = :productId', { productId });
+
+    queryBuilder.orderBy('reviews.createAt', 'DESC');
+
+    if (query.rating) {
+      // Проверяем, что рейтинг находится в допустимом диапазоне (от 1 до 5)
+      if (query.rating >= 1 && query.rating <= 5) {
+        // Добавляем условие фильтрации по рейтингу
+        queryBuilder.andWhere('reviews.rating = :rating', {
+          rating: query.rating,
+        });
+      } else {
+        // Если рейтинг не входит в диапазон от 1 до 5, выбрасываем ошибку или обрабатываем ситуацию по вашему усмотрению
+        throw new BadRequestException(
+          'Invalid rating value. Rating should be between 1 and 5.',
+        );
+      }
+    }
+    const reviewsCount = await queryBuilder.getCount();
+    const reviews = await queryBuilder.getMany();
+
+    return { reviews, reviewsCount };
   }
 }

@@ -7,5 +7,5 @@ export class CreateReviewsDto {
   @IsNumber()
   rating: number;
   @IsNotEmpty()
-  descr: string;
+  description: string;
 }

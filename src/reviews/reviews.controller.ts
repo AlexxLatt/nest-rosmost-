@@ -5,7 +5,11 @@ import {
   Get,
   Param,
   Post,
+  Put,
+  Query,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '@app/user/guards/auth.guard';
@@ -13,20 +17,23 @@ import { User } from '@app/user/decorators/user.decorator';
 import { UserEntity } from '@app/user/user.entity';
 import { CreateReviewsDto } from './dto/createReviews.dto';
 import { ReviewsResponseInterface } from './types/reviewsResponse.intarface';
+import { query } from 'express';
+import { ReviewsSResponseInterface } from './types/reviewsSResponse.intarface';
 
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
-  @Post()
+  @Post(':productId')
   @UseGuards(AuthGuard)
+  @UsePipes(new ValidationPipe())
   async create(
     @User() currentUser: UserEntity,
-    @Body('productId') productId: number, // Переносим идентификатор продукта в тело запроса
-    @Body('reviews') createReviewsDto: CreateReviewsDto, // Изменяем имя поля на 'review'
+    @Param('productId') productId: number,
+    @Body('reviews') createReviewsDto: CreateReviewsDto,
   ): Promise<ReviewsResponseInterface> {
     const review = await this.reviewsService.createReviews(
       currentUser,
-      productId, // Передаем идентификатор продукта
+      productId,
       createReviewsDto,
     );
     return this.reviewsService.buildReviewsResponse(review);
@@ -47,5 +54,39 @@ export class ReviewsController {
     @Param('slug') slug: string,
   ) {
     return this.reviewsService.deleteReview(slug, currentUserId);
+  }
+
+  @Put(':slug')
+  @UseGuards(AuthGuard)
+  @UsePipes(new ValidationPipe())
+  async updateReview(
+    @User('id') currentUserId: number,
+    @Param('slug') slug: string,
+    @Body('reviews') updateReviewsDto: CreateReviewsDto,
+  ) {
+    const review = await this.reviewsService.updateReview(
+      slug,
+      currentUserId,
+      updateReviewsDto,
+    );
+    return this.reviewsService.buildReviewsResponse(review);
+  }
+
+  @Get()
+  @UseGuards(AuthGuard)
+  async findAll(
+    @User('id') currentUserId: number,
+    @Query('productId') productId: string,
+    @Query() query: any,
+  ): Promise<ReviewsSResponseInterface> {
+    const parsedProductId = parseInt(productId, 10);
+    if (isNaN(parsedProductId)) {
+      throw new Error('Product ID must be a valid number');
+    }
+    return await this.reviewsService.findAll(
+      currentUserId,
+      parsedProductId,
+      query,
+    );
   }
 }
