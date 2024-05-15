@@ -32,7 +32,7 @@ export class ReviewsEntity {
   updateTimestamp() {
     this.updateAt = new Date();
   }
-  @ManyToOne(() => UserEntity, (user) => user.reviews)
+  @ManyToOne(() => UserEntity, (user) => user.reviews, { eager: true })
   author: UserEntity;
   @ManyToOne(() => ProductsEntity, (product) => product.reviews)
   product: ProductsEntity;
