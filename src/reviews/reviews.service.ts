@@ -23,6 +23,8 @@ export class ReviewsService {
     private readonly reviewsRepository: Repository<ReviewsEntity>,
     @InjectRepository(ProductsEntity)
     private readonly productsRepository: Repository<ProductsEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) {}
   async createReviews(
     currentUser: UserEntity,
@@ -121,5 +123,53 @@ export class ReviewsService {
     const reviews = await queryBuilder.getMany();
 
     return { reviews, reviewsCount };
+  }
+  async likeReview(
+    slug: string,
+    currentUserId: number,
+  ): Promise<ReviewsEntity> {
+    const review = await this.reviewsRepository.findOne({ slug });
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+    const user = await this.userRepository.findOne(currentUserId, {
+      relations: ['favorites'],
+    });
+    const isNotFavorited =
+      user.favorites.findIndex(
+        (reviewInFavorites) => reviewInFavorites.id === review.id,
+      ) == -1;
+    if (isNotFavorited) {
+      user.favorites.push(review);
+      review.favoritesCount++;
+      await this.userRepository.save(user);
+      await this.reviewsRepository.save(review);
+    }
+
+    return review;
+  }
+
+  async DeleteLikeReview(
+    slug: string,
+    currentUserId: number,
+  ): Promise<ReviewsEntity> {
+    const review = await this.reviewsRepository.findOne({ slug });
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+    const user = await this.userRepository.findOne(currentUserId, {
+      relations: ['favorites'],
+    });
+    const reviewIndex = user.favorites.findIndex(
+      (reviewInFavorites) => reviewInFavorites.id === review.id,
+    );
+
+    if (reviewIndex >= 0) {
+      user.favorites.splice(reviewIndex, 1);
+      review.favoritesCount--; // Уменьшаем счетчик favoritesCount
+      await this.userRepository.save(user);
+      await this.reviewsRepository.save(review);
+    }
+    return review;
   }
 }

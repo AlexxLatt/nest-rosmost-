@@ -13,7 +13,8 @@ import { CreateProductsDto } from './dto/createProducts.dto';
 import { ProductsEntity } from './products.entity';
 import { AuthGuard } from '@app/user/guards/auth.guard';
 import { User } from '@app/user/decorators/user.decorator';
-
+import { ProductResponseInterface } from './types/productResponse.interface';
+import { ProductsResponseInterface } from './types/productsResponse.interface';
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -22,25 +23,32 @@ export class ProductsController {
   @UseGuards(AuthGuard)
   async create(
     @Body('product') createProductDto: CreateProductsDto,
-  ): Promise<ProductsEntity> {
-    return this.productsService.createProduct(createProductDto);
+  ): Promise<ProductResponseInterface> {
+    const product = await this.productsService.createProduct(createProductDto);
+    return this.productsService.buildProductResponse(product);
   }
 
   @Get()
   @UseGuards(AuthGuard)
-  async findAll(@User('id') idUser: number): Promise<ProductsEntity[]> {
-    return this.productsService.findAllProductsInBasket(idUser);
+  async findAll(
+    @User('id') idUser: number,
+  ): Promise<ProductsResponseInterface> {
+    const product = await this.productsService.findAllProductsInBasket(idUser);
+    return this.productsService.buildProductsResponse(product);
   }
 
   @Get('purchased')
   @UseGuards(AuthGuard)
   async findAllPurchased(
     @User('id') idUser: number,
-  ): Promise<ProductsEntity[]> {
-    return this.productsService.findAllPurchasedProducts(idUser);
+  ): Promise<ProductsResponseInterface> {
+    const products = await this.productsService.findAllPurchasedProducts(
+      idUser,
+    );
+    return this.productsService.buildProductsResponse(products);
   }
 
-  @Get('status')
+  @Get('all')
   @UseGuards(AuthGuard)
   async findAllWithStatus(
     @User('id') idUser: number,
@@ -50,8 +58,15 @@ export class ProductsController {
 
   @Get(':id')
   @UseGuards(AuthGuard)
-  async findOne(@Param('id') id: number): Promise<ProductsEntity> {
-    return this.productsService.findOneProduct(id);
+  async findOne(
+    @Param('id') id: number,
+    @User('id') currentUserId: number,
+  ): Promise<ProductResponseInterface> {
+    const product = await this.productsService.findOneProduct(
+      currentUserId,
+      id,
+    );
+    return await this.productsService.buildProductResponse(product);
   }
 
   @Put(':id')
@@ -59,8 +74,13 @@ export class ProductsController {
   async update(
     @Param('id') id: number,
     @Body('product') updateProductDto: CreateProductsDto,
+    @User('id') currentUserId: number,
   ): Promise<ProductsEntity> {
-    return this.productsService.updateProduct(id, updateProductDto);
+    return this.productsService.updateProduct(
+      id,
+      updateProductDto,
+      currentUserId,
+    );
   }
 
   @Delete(':id')

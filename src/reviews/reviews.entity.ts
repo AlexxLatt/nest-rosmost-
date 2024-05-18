@@ -28,6 +28,8 @@ export class ReviewsEntity {
   updateAt: Date;
   @Column({ default: 0 })
   favoritesCount: number;
+  @Column({ default: 0 })
+  unfavoritesCount: number;
   @BeforeUpdate()
   updateTimestamp() {
     this.updateAt = new Date();

@@ -7,7 +7,8 @@ import { BasketService } from '@app/basket/basket.service';
 import { UserEntity } from '@app/user/user.entity';
 import { UserProductEntity } from '@app/userProduct/userProduct.entity';
 import { BasketEntity } from '@app/basket/basket.entity';
-
+import { ProductResponseInterface } from './types/productResponse.interface';
+import { ProductsResponseInterface } from './types/productsResponse.interface';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -78,13 +79,35 @@ export class ProductsService {
     return products;
   }
 
-  async findOneProduct(id: number): Promise<ProductsEntity> {
-    const product = await this.productsRepository.findOne(id, {
-      relations: ['reviews'],
+  async findOneProduct(
+    userId: number,
+    productId: number,
+  ): Promise<ProductsEntity> {
+    const user = await this.userRepository.findOne(userId, {
+      relations: ['basket', 'basket.products'],
     });
-    if (!product) {
-      throw new NotFoundException(`Продукт с ID ${id} не найден`);
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
     }
+
+    if (!user.basket) {
+      throw new NotFoundException('Корзина не найдена');
+    }
+
+    console.log('Корзина пользователя:', user.basket);
+    console.log('Продукты в корзине:', user.basket.products);
+
+    const product = user.basket.products.find(
+      (product) => product.id === +productId,
+    );
+
+    console.log('Найденный продукт:', product);
+
+    if (!product) {
+      throw new NotFoundException('Продукт не найден в корзине');
+    }
+
     return product;
   }
 
@@ -98,9 +121,17 @@ export class ProductsService {
   async updateProduct(
     id: number,
     updateProductDto: CreateProductsDto,
+    currentUserId: number,
   ): Promise<ProductsEntity> {
-    const existingProduct = await this.findOneProduct(id);
+    const existingProduct = await this.findOneProduct(id, currentUserId);
     const updatedProduct = Object.assign(existingProduct, updateProductDto);
     return await this.productsRepository.save(updatedProduct);
+  }
+
+  buildProductResponse(product): ProductResponseInterface {
+    return { product };
+  }
+  buildProductsResponse(products): ProductsResponseInterface {
+    return { products };
   }
 }

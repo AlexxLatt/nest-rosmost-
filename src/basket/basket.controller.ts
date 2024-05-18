@@ -29,7 +29,7 @@ export class BasketController {
     return await this.basketService.removeProductFromBasket(userId, productId);
   }
 
-  @Post() // Новый метод для создания корзины
+  @Post()
   @UseGuards(AuthGuard)
   async createBasketForUser(@User('id') userId: number) {
     return await this.basketService.createBasketForUser(userId);

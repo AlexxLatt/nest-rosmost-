@@ -89,4 +89,27 @@ export class ReviewsController {
       query,
     );
   }
+
+  @Post(':slug/favorite')
+  @UseGuards(AuthGuard)
+  async likeReviews(
+    @User('id') currentUserId: number,
+    @Param('slug') slug: string,
+  ): Promise<ReviewsResponseInterface> {
+    const review = await this.reviewsService.likeReview(slug, currentUserId);
+    return this.reviewsService.buildReviewsResponse(review);
+  }
+
+  @Delete(':slug/favorite')
+  @UseGuards(AuthGuard)
+  async DeleteLikeReviews(
+    @User('id') currentUserId: number,
+    @Param('slug') slug: string,
+  ): Promise<ReviewsResponseInterface> {
+    const review = await this.reviewsService.DeleteLikeReview(
+      slug,
+      currentUserId,
+    );
+    return this.reviewsService.buildReviewsResponse(review);
+  }
 }

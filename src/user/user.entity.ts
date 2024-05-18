@@ -5,6 +5,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   OneToMany,
   OneToOne,
@@ -55,4 +56,12 @@ export class UserEntity {
   @OneToOne(() => BasketEntity, (basket) => basket.user)
   @JoinColumn()
   basket: BasketEntity;
+
+  @ManyToMany(() => ReviewsEntity)
+  @JoinTable()
+  favorites: ReviewsEntity[];
+
+  @ManyToMany(() => ReviewsEntity)
+  @JoinTable()
+  unFavorites: ReviewsEntity[];
 }
